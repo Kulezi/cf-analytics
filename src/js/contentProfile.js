@@ -34,6 +34,7 @@ chrome.runtime.sendMessage({ todo: "appendHTML" }, function (response) {
     if (data.status == "OK") {
       //processdata
       processData(data.result);
+      createUnsolvedChart();
       createProblemRatingChart();
       createTagChart();
     } else {
@@ -48,6 +49,7 @@ function getProfileIdFromUrl(url) {
   temp = temp[0].split('?', 1);
   return temp;
 }
+
 function processData(resultArr) {
   for (var i = resultArr.length - 1; i >= 0; i--) {
     var sub = resultArr[i];
@@ -67,6 +69,10 @@ function processData(resultArr) {
       problems.set(problemId, obj);
     }
   }
+}
+
+function createUnsolvedChart() {
+  
   let unsolvedCount = 0;
   problems.forEach(function (prob) {
     if (prob.rating && prob.solved === true) {
@@ -105,12 +111,8 @@ function processData(resultArr) {
     ratingChartData.push(val);
     ratingChartBackgroundColor.push(ratingBackgroundColor(key));
   }
-  for (let [key, val] of tags) {
-    console.log(key + '-' + val);
-    tagChartLabel.push(key);
-    tagChartData.push(val);
-  }
 }
+
 function findProblemURL(contestId, index) {
   if (contestId && contestId.toString().length <= 4) {
     return `https://codeforces.com/problemset/problem/${contestId}/${index}`;
@@ -152,7 +154,14 @@ function createProblemRatingChart() {
     }
   });
 }
+
 function createTagChart() {
+  for (let [key, val] of tags) {
+    console.log(key + '-' + val);
+    tagChartLabel.push(key);
+    tagChartData.push(val);
+  }
+
   var ctx = document.getElementById('tagChart').getContext('2d');
   var myChart = new Chart(ctx, {
     type: 'doughnut',
