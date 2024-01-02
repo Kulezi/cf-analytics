@@ -1,4 +1,5 @@
 var problems = new Map();
+var contests = new Map();
 var ratings = new Map();
 var tags = new Map();
 var ratingChartLabel = [];
@@ -26,14 +27,14 @@ tags[Symbol.iterator] = function* () {
 }
 //Material Design 400 light
 const colorArray = ['#ff867c', '#ff77a9', '#df78ef', '#b085f5', '#8e99f3', '#80d6ff', '#73e8ff', '#6ff9ff', '#64d8cb', '#98ee99', '#cfff95', '#ffff89', '#ffff8b', '#fffd61', '#ffd95b', '#ffa270'];
-chrome.runtime.sendMessage({ todo: "appendHTML" }, function (response) {
+chrome.runtime.sendMessage({ todo: "appendHTML" }, async function (response) {
   $('#pageContent').append(response.htmlResponse);
   const profileId = getProfileIdFromUrl(window.location.href);
   console.log(profileId);
-  $.get(`https://codeforces.com/api/user.status?handle=${profileId}`, function (data) {
+  await $.get(`https://codeforces.com/api/user.status?handle=${profileId}`, async function (data) {
     if (data.status == "OK") {
       //processdata
-      processData(data.result);
+      await processData(data.result);
       createUnsolvedChart();
       createProblemRatingChart();
       createTagChart();
@@ -50,9 +51,58 @@ function getProfileIdFromUrl(url) {
   return temp;
 }
 
-function processData(resultArr) {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function processData(resultArr) {
+  var contestProblems = new Map();
+  await $.get(`https://codeforces.com/api/problemset.problems`, function (data) {
+    if (data.status == "OK") {
+      console.log("OK");
+      for (var i = 0; i < data.result.problems.length; i++) {
+        var problem = data.result.problems[i];
+        var problemId = problem.contestId + '-' + problem.index;
+        if (!contestProblems.has(problem.contestId)) {
+          contestProblems.set(problem.contestId, [problem]);
+        } else {
+          var oldProblems = contestProblems.get(problem.contestId);
+          oldProblems.push(problem);
+          contestProblems.set(problem.contestId, oldProblems);
+        }
+      }
+    } else {
+      console.log(data.status);
+    }
+  });
+
+  // console.log(contestProblems);
+
   for (var i = resultArr.length - 1; i >= 0; i--) {
     var sub = resultArr[i];
+    var contestId = sub.contestId;
+    if (sub.author.participantType == "CONTESTANT" || sub.author.participantType == "VIRTUAL") {
+      if (!contestProblems.has(contestId)) {
+        console.log(`encountered problem from unknown contest ${contestId}!`);
+      } else {
+        var p = contestProblems.get(contestId);
+        p.forEach(function (problem) {
+          var problemId = problem.contestId + '-' + problem.index;
+          console.log(problemId);
+          if (!problems.has(problemId)) {
+            problems.set(problemId, {
+              solved:false,
+              rating:problem.rating,
+              contestId: problem.contestId,
+              index: problem.index,
+              tags: problem.tags,
+            });
+          }
+        });
+      }
+    }
+    
+
     var problemId = sub.problem.contestId + '-' + sub.problem.index;
     if (!problems.has(problemId)) {
       problems.set(problemId, {
@@ -72,10 +122,9 @@ function processData(resultArr) {
 }
 
 function createUnsolvedChart() {
-  
   let unsolvedCount = 0;
   problems.forEach(function (prob) {
-    if (prob.rating && prob.solved === true) {
+    if (prob.rating && prob.solved === false) {
       if (!ratings.has(prob.rating)) {
         ratings.set(prob.rating, 0);
       }
@@ -88,10 +137,10 @@ function createUnsolvedChart() {
       const problemURL = findProblemURL(prob.contestId, prob.index);
       $('#unsolved_list').append(`
           <a class="unsolved_problem" href="${problemURL}">
-            ${prob.contestId}-${prob.index}
-          </a>
+            ${prob.contestId}-${prob.index}-rating:${prob.rating}
+          </a><br>
       `);
-      $('#unsolved_list').append("     ");
+      $('#unsolved_list').append(" ");
     }
     if (prob.solved === true) {
       prob.tags.forEach(function (tag) {
@@ -157,7 +206,7 @@ function createProblemRatingChart() {
 
 function createTagChart() {
   for (let [key, val] of tags) {
-    console.log(key + '-' + val);
+    // console.log(key + '-' + val);
     tagChartLabel.push(key);
     tagChartData.push(val);
   }
