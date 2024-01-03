@@ -3,8 +3,10 @@ var contests = new Map();
 var ratings = new Map();
 var tags = new Map();
 var ratingChartLabel = [];
-var ratingChartData = [];
-var ratingChartBackgroundColor = [];
+var solvedRatingChartData = [];
+var solvedRatingChartBackgroundColor = [];
+var unsolvedRatingChartData = [];
+var unsolvedRatingChartBackgroundColor = [];
 var tagChartLabel = [];
 var tagChartData = [];
 ratings[Symbol.iterator] = function* () {
@@ -138,12 +140,13 @@ function createUnsolvedChart() {
     </tr>`);
 
   problems.forEach(function (prob) {
-    if (prob.rating && prob.solved === false) {
+    if (prob.rating) {
       if (!ratings.has(prob.rating)) {
-        ratings.set(prob.rating, 0);
+        ratings.set(prob.rating, {solved: 0, unsolved: 0});
       }
       let cnt = ratings.get(prob.rating);
-      cnt++;
+      if (prob.solved === true) cnt.solved++;
+      else cnt.unsolved++;
       ratings.set(prob.rating, cnt);
     }
 
@@ -171,8 +174,11 @@ function createUnsolvedChart() {
   for (let [key, val] of ratings) {
     // console.log(key+'-'+val);
     ratingChartLabel.push(key);
-    ratingChartData.push(val);
-    ratingChartBackgroundColor.push(ratingBackgroundColor(key));
+    solvedRatingChartData.push(val.solved);
+    solvedRatingChartBackgroundColor.push(ratingBackgroundColor(key));
+    
+    unsolvedRatingChartData.push(val.unsolved);
+    unsolvedRatingChartBackgroundColor.push(ratingBackgroundColor(key));
   }
 }
 
@@ -191,10 +197,16 @@ function createProblemRatingChart() {
       labels: ratingChartLabel,
       datasets: [{
         label: 'Problems Solved',
-        data: ratingChartData,
-        backgroundColor: ratingChartBackgroundColor,
-        borderColor: 'rgba(0  ,0  ,0  ,1)',//ratingChartBorderColor,
-        borderWidth: 0.75,
+        data: solvedRatingChartData,
+        backgroundColor: solvedRatingChartBackgroundColor,
+        borderColor: 'rgba(22, 177, 22, 1)',//ratingChartBorderColor,
+        borderWidth: 3,
+      },{
+        label: 'Problems Unsolved',
+        data: unsolvedRatingChartData,
+        backgroundColor: unsolvedRatingChartBackgroundColor,
+        borderColor: 'rgba(177, 22, 22, 1)',
+        borderWidth: 3,
       }]
     },
     options: {
