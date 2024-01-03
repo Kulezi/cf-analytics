@@ -8,7 +8,8 @@ var solvedRatingChartBackgroundColor = [];
 var unsolvedRatingChartData = [];
 var unsolvedRatingChartBackgroundColor = [];
 var tagChartLabel = [];
-var tagChartData = [];
+var tagChartDataSolved = [];
+var tagChartDataUnsolved = [];
 ratings[Symbol.iterator] = function* () {
   yield* [...ratings.entries()].sort((a, b) => {
     if (a[0] < b[0]) {
@@ -39,7 +40,7 @@ chrome.runtime.sendMessage({ todo: "appendHTML" }, async function (response) {
       await processData(data.result);
       createUnsolvedChart();
       createProblemRatingChart();
-      createTagChart();
+      createTagCharts();
     } else {
       //response not loaded
       console.error(data.status + ' : ' + data.comment);
@@ -159,16 +160,17 @@ function createUnsolvedChart() {
               </a> 
       `);
     }
-    if (prob.solved === true) {
-      prob.tags.forEach(function (tag) {
-        if (!tags.has(tag)) {
-          tags.set(tag, 0);
-        }
-        let cnt = tags.get(tag);
-        cnt++;
-        tags.set(tag, cnt);
-      })
-    }
+
+    prob.tags.forEach(function (tag) {
+      if (!tags.has(tag)) {
+        tags.set(tag, {solved: 0, unsolved: 0});
+      }
+      let cnt = tags.get(tag);
+      if (prob.solved === true) cnt.solved++;
+      else cnt.unsolved++;
+      tags.set(tag, cnt);
+    });
+    
   })
   $('#unsolved_count').text(`Count : ${unsolvedCount}`);
   for (let [key, val] of ratings) {
@@ -230,20 +232,26 @@ function createProblemRatingChart() {
   });
 }
 
-function createTagChart() {
+function createTagCharts() {
   for (let [key, val] of tags) {
     // console.log(key + '-' + val);
     tagChartLabel.push(key);
-    tagChartData.push(val);
+    tagChartDataSolved.push(val.solved);
+    tagChartDataUnsolved.push(val.unsolved);
   }
 
-  var ctx = document.getElementById('tagChart').getContext('2d');
+  createTagChart('tagChartSolved', 'Tags Solved', tagChartLabel, tagChartDataSolved, "legend_unordered_list_solved");  
+  createTagChart('tagChartUnsolved', 'Tags Unsolved', tagChartLabel, tagChartDataUnsolved, "legend_unordered_list_unsolved");  
+}
+
+function createTagChart(id, label, tagChartLabel, tagChartData, legendId) {
+  let ctx = document.getElementById(id).getContext('2d');
   var myChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: tagChartLabel,
       datasets: [{
-        label: 'Tags Solved',
+        label: label,
         data: tagChartData,
         backgroundColor: colorArray,
         // borderColor: 'rgba(0,0,0,0.5)',//ratingChartBorderColor,
@@ -262,7 +270,7 @@ function createTagChart() {
     },
   });
   for (var i = 0; i < tagChartLabel.length; i++) {
-    $('#legend_unordered_list').append(`<li>
+    $(`#${legendId}`).append(`<li>
     <svg width="12" height="12">
       <rect width="12" height="12" style="fill:${colorArray[i % (colorArray.length)]};stroke-width:1;stroke:rgb(0,0,0)" />
     </svg>
@@ -270,6 +278,7 @@ function createTagChart() {
     </li>`)
   }
 }
+
 function ratingBackgroundColor(rating) {
   const legendaryGrandmaster = 'rgba(170,0  ,0  ,0.9)';
   const internationalGrandmaster = 'rgba(255,51 ,51 ,0.9)';
