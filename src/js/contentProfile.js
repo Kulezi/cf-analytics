@@ -88,7 +88,7 @@ async function processData(resultArr) {
         var p = contestProblems.get(contestId);
         p.forEach(function (problem) {
           var problemId = problem.contestId + '-' + problem.index;
-          console.log(problemId);
+          // console.log(problemId);
           if (!problems.has(problemId)) {
             problems.set(problemId, {
               solved:false,
@@ -123,6 +123,20 @@ async function processData(resultArr) {
 
 function createUnsolvedChart() {
   let unsolvedCount = 0;
+
+  for (let r = 0; r <= 4000; r += 100) {
+    $(`#unsolved_table`).append(`
+      <tr>
+        <td>${r}</td>
+        <td id="unsolved_list${r}"></td>
+        </tr>`);
+  }
+  $(`#unsolved_table`).append(`
+    <tr>
+      <td>Unknown</td>
+      <td id="unsolved_listundefined"></td>
+    </tr>`);
+
   problems.forEach(function (prob) {
     if (prob.rating && prob.solved === false) {
       if (!ratings.has(prob.rating)) {
@@ -132,15 +146,15 @@ function createUnsolvedChart() {
       cnt++;
       ratings.set(prob.rating, cnt);
     }
+
     if (prob.solved === false) {
       unsolvedCount++;
       const problemURL = findProblemURL(prob.contestId, prob.index);
-      $('#unsolved_list').append(`
-          <a class="unsolved_problem" href="${problemURL}">
-            ${prob.contestId}-${prob.index}-rating:${prob.rating}
-          </a><br>
+      $(`#unsolved_list${prob.rating}`).append(`
+              <a class="unsolved_problem" href="${problemURL}">
+                ${prob.contestId}-${prob.index}
+              </a> 
       `);
-      $('#unsolved_list').append(" ");
     }
     if (prob.solved === true) {
       prob.tags.forEach(function (tag) {
